@@ -24,6 +24,7 @@ FONT = pygame.font.SysFont(None, 50)
 # ---------------- Game States ----------------
 STATE_MENU = 0
 STATE_GAME = 1
+STATE_GAMEOVER = 2
 MAX_LETTER = 20
 
 game_state = STATE_MENU
@@ -40,6 +41,9 @@ selected_cells = []
 current_word = ""
 score = 0
 words_cleared = 0
+total_words_found = 0
+time_left = 60
+last_tick_time = 0
 
 # ---------------- Game Loop ----------------
 while True:
@@ -56,8 +60,25 @@ while True:
             if event.type == pygame.MOUSEBUTTONDOWN:
 
                 if play_button.collidepoint(event.pos):
+                    # Reset Game
+                    score = 0
+                    total_words_found = 0
+                    time_left = 5
+                    last_tick_time = pygame.time.get_ticks()
+                    grid = create_grid_with_words(valid_words)
+                    selected_cells.clear()
+                    current_word = ""
                     game_state = STATE_GAME
 
+                if quit_button.collidepoint(event.pos):
+                    pygame.quit()
+                    sys.exit()
+
+        # ================ GAME OVER ================
+        elif game_state == STATE_GAMEOVER:
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if play_button.collidepoint(event.pos):
+                    game_state = STATE_MENU
                 if quit_button.collidepoint(event.pos):
                     pygame.quit()
                     sys.exit()
@@ -104,6 +125,7 @@ while True:
                         gained_score = calculate_score(current_word)
                         score += gained_score
                         words_cleared += 1
+                        total_words_found += 1
 
                         print("Valid word!")
                         print("Score gained:", gained_score)
@@ -117,6 +139,16 @@ while True:
 
                     else:
                         print("Invalid word")
+
+    # Timer logic (outside event loop so it ticks every frame)
+    if game_state == STATE_GAME:
+        current_time = pygame.time.get_ticks()
+        if current_time - last_tick_time >= 1000:
+            time_left -= 1
+            last_tick_time = current_time
+
+        if time_left <= 0:
+            game_state = STATE_GAMEOVER
 
     # ================= DRAW =================
     if game_state == STATE_MENU:
@@ -136,6 +168,24 @@ while True:
 
         score_text = FONT.render(f"Score: {score}", True, (0,255,0))
         screen.blit(score_text, (50,50))
+
+        time_text = FONT.render(f"Time: {time_left}", True, (255,100,100))
+        screen.blit(time_text, (WIDTH - 250, 50))
+
+    elif game_state == STATE_GAMEOVER:
+        screen.fill((30,30,30))
+
+        BIG_FONT = pygame.font.SysFont(None, 80)
+        
+        gameover_text = BIG_FONT.render("TIME'S UP!", True, (255, 100, 100))
+        screen.blit(gameover_text, (WIDTH//2 - gameover_text.get_width()//2, HEIGHT//3 - 100))
+
+        final_score_text = FONT.render(f"Final Score: {score}", True, (100, 255, 100))
+        screen.blit(final_score_text, (WIDTH//2 - final_score_text.get_width()//2, HEIGHT//3))
+
+        words_found_text = FONT.render(f"Total Words Found: {total_words_found}", True, (255, 255, 100))
+        screen.blit(words_found_text, (WIDTH//2 - words_found_text.get_width()//2, HEIGHT//3 + 60))
+
 
     pygame.display.flip()
     clock.tick(FPS)
